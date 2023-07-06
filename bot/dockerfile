@@ -5,6 +5,5 @@ COPY . /app
 WORKDIR /app
 
 RUN cargo build --release
-ENV DISCORD_TOKEN=MTA5OTQxOTM0MDE3NDAxMjQ5Nw.GjNaU_.FuTyQfV9ZWOr3b_v0-ckCWZcwbIQFCEzO0_JwQ
 
 CMD ["cargo", "run", "--release"]

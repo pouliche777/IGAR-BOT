@@ -7,10 +7,6 @@ use serenity::{
     prelude::*,
 };
 
-
-
-
-
 const HELP_MESSAGE: &str = "
 Bonjour, je suis Igar-bot!
 Voici la liste de mes fonctionnalités:
@@ -20,12 +16,15 @@ Voici la liste de mes fonctionnalités:
 
 
 ";
+
 const INSULT_MESSAGE: &str = "
 Sale paysan!!
 ";
+
 const LOVE_MESSAGE: &str = "
 Igar #les mains baladeuses, vous agrippe la fesse gauche!
 ";
+
 const HELP_COMMAND: &str = "!help";
 const INSULT_COMMAND: &str = "!insult";
 const LOVE_COMMAND: &str = "!love";
