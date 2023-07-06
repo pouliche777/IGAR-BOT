@@ -1,5 +1,6 @@
 
 use std::env;
+use reqwest;
 
 use serenity::{
     async_trait,
@@ -29,8 +30,21 @@ const HELP_COMMAND: &str = "!help";
 const INSULT_COMMAND: &str = "!insult";
 const LOVE_COMMAND: &str = "!love";
 const TELL_COMMAND: &str = "!tell";
+const PARSE_COMMAND: &str = "!Parse";
 
 struct Handler;
+
+async fn get_parse_data(parse_url: &str) -> Result<String, reqwest::Error> {
+    let client = reqwest::Client::new();
+    let api_key = env::var("WLC_KEY").expect("API key not found in environment variables");
+    let response = client
+        .get(parse_url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .send()
+        .await?;
+    let parse_data: ParseData = response.json().await?;
+    Ok(parse_data)
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -84,8 +98,27 @@ impl EventHandler for Handler {
                     println!("Error sending message: {:?}", why);
                 }
             }
-        }
+        } else if msg.content.starts_with(PARSE_COMMAND) {
+            let mut parts = msg.content.splitn(2, ' ');
+            parts.next();
+            if let Some(parse_url) = parts.next() {
+                let parse_data = get_parse_data(parse_url).await;
+                match parse_data {
+                    Ok(data) => {
+                        // Process and format the received data
+                        println!("Received parse data: {:?}", data);
+                    },
+                    Err(error) => {
+                        // Handle the error
+                        println!("Error occurred: {:?}", error);
+                    }
+                }
+            } else {
+                // Handle the case where the parse URL is missing
+                println!("Parse URL is missing");
+            }
     }
+
     async fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
         }
