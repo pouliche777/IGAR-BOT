@@ -1,6 +1,7 @@
 
 use std::env;
 use reqwest;
+use serde::{Deserialize, Serialize};
 
 use serenity::{
     async_trait,
@@ -8,6 +9,8 @@ use serenity::{
     prelude::*,
 };
 
+
+const TOKEN_URL &str=  "https://www.warcraftlogs.com/oauth/token";
 const HELP_MESSAGE: &str = "
 Bonjour, je suis Igar-bot!
 Voici la liste de mes fonctionnalités:
@@ -31,6 +34,21 @@ const INSULT_COMMAND: &str = "!insult";
 const LOVE_COMMAND: &str = "!love";
 const TELL_COMMAND: &str = "!tell";
 const PARSE_COMMAND: &str = "!Parse";
+
+
+async fn get_token(client_id &str, client_secret: &str) -> Result<TokenResponse, reqwest::Error> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .post(TOKEN_URL)
+        .basic_auth(client_id, Some(client_secret))
+        .form(&[("grant_type", "client_credentials")])
+        .send()
+        .await?;
+    
+    let token_response: TokenResponse = response.json().await?;
+    Ok(token_response)
+}
 
 struct Handler;
 
@@ -102,21 +120,25 @@ impl EventHandler for Handler {
             let mut parts = msg.content.splitn(2, ' ');
             parts.next();
             if let Some(parse_url) = parts.next() {
-                let parse_data = get_parse_data(parse_url).await;
-                match parse_data {
-                    Ok(data) => {
+                // let parse_data = get_parse_data(parse_url).await;
+                // match parse_data {
+                //    Ok(data) => {
+                        let client_id = env::var("CLIENT_ID")
+                        let client_secret = env::var("CLIENT_SECRET")
+                        let access_token= get_token(&client_id, &client_secret).await;
                         // Process and format the received data
                         println!("Received parse data: {:?}", data);
-                    },
-                    Err(error) => {
+                        println!("WLC_TOKEN: {}", access_token);
+                   // },
+                   // Err(error) => {
                         // Handle the error
                         println!("Error occurred: {:?}", error);
                     }
-                }
-            } else {
+             else {
                 // Handle the case where the parse URL is missing
                 println!("Parse URL is missing");
             }
+        }
     }
 
     async fn ready(&self, _: Context, ready: Ready) {
@@ -131,7 +153,6 @@ impl EventHandler for Handler {
 async fn main() {
   let token = env::var("DISCORD_TOKEN")
   .expect("Expected a token in the environment");
-
   let mut client = Client::builder(&token)
   .event_handler(Handler)
   .await
