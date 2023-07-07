@@ -1,16 +1,16 @@
 
 use std::env;
 use reqwest;
-use serde::{Deserialize, Serialize};
-
+use serde::{Deserialize};
 use serenity::{
     async_trait,
     model::{channel::Message, gateway::Ready},
     prelude::*,
 };
 
-
-const TOKEN_URL &str=  "https://www.warcraftlogs.com/oauth/token";
+//Mise en place de constantes
+const TOKEN_URL: &str = "https://www.warcraftlogs.com/oauth/token";
+const WCL_API_URL: &str = "https://www.warcraftlogs.com/api/v2/client";
 const HELP_MESSAGE: &str = "
 Bonjour, je suis Igar-bot!
 Voici la liste de mes fonctionnalités:
@@ -20,23 +20,40 @@ Voici la liste de mes fonctionnalités:
 
 
 ";
-
 const INSULT_MESSAGE: &str = "
 Sale paysan!!
 ";
-
 const LOVE_MESSAGE: &str = "
 Igar #les mains baladeuses, vous agrippe la fesse gauche!
 ";
-
 const HELP_COMMAND: &str = "!help";
 const INSULT_COMMAND: &str = "!insult";
 const LOVE_COMMAND: &str = "!love";
 const TELL_COMMAND: &str = "!tell";
-const PARSE_COMMAND: &str = "!Parse";
+const PARSE_COMMAND: &str = "!parse";
 
+#[derive(Deserialize)]
+struct TokenResponse {
+    access_token: String,
+    token_type: String,
+    expires_in: u32,
+    // Include any other fields you expect to receive in the token response
+}
+use std::fmt;
 
-async fn get_token(client_id &str, client_secret: &str) -> Result<TokenResponse, reqwest::Error> {
+impl fmt::Display for TokenResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Access Token: {}, Token Type: {}, Expires In: {}",
+            self.access_token, self.token_type, self.expires_in
+        )
+    }
+}
+
+struct Handler;
+
+async fn get_token(client_id: &str, client_secret: &str) -> Result<TokenResponse, reqwest::Error> {
     let client = reqwest::Client::new();
 
     let response = client
@@ -45,24 +62,35 @@ async fn get_token(client_id &str, client_secret: &str) -> Result<TokenResponse,
         .form(&[("grant_type", "client_credentials")])
         .send()
         .await?;
-    
-    let token_response: TokenResponse = response.json().await?;
+
+    let token_response = response.json::<TokenResponse>().await?;
     Ok(token_response)
 }
-
-struct Handler;
-
-async fn get_parse_data(parse_url: &str) -> Result<String, reqwest::Error> {
+async fn get_data(acces_token: &str) -> Result<serde_json::Value, reqwest::Error> {
     let client = reqwest::Client::new();
-    let api_key = env::var("WLC_KEY").expect("API key not found in environment variables");
+    let query = r#"
+            query {
+                users {
+                    name
+                    role
+                    realm {
+                        name
+                        region
+                    }
+                }
+            }
+        "#;
     let response = client
-        .get(parse_url)
-        .header("Authorization", format!("Bearer {}", api_key))
+        .post(WCL_API_URL)
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {}", access_token))
         .send()
         .await?;
-    let parse_data: ParseData = response.json().await?;
-    Ok(parse_data)
+
+        let data = response.json::<serde_json::Value>().await?;
+    Ok(data)
 }
+
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -119,22 +147,17 @@ impl EventHandler for Handler {
         } else if msg.content.starts_with(PARSE_COMMAND) {
             let mut parts = msg.content.splitn(2, ' ');
             parts.next();
-            if let Some(parse_url) = parts.next() {
-                // let parse_data = get_parse_data(parse_url).await;
-                // match parse_data {
-                //    Ok(data) => {
-                        let client_id = env::var("CLIENT_ID")
-                        let client_secret = env::var("CLIENT_SECRET")
-                        let access_token= get_token(&client_id, &client_secret).await;
-                        // Process and format the received data
-                        println!("Received parse data: {:?}", data);
-                        println!("WLC_TOKEN: {}", access_token);
-                   // },
-                   // Err(error) => {
-                        // Handle the error
-                        println!("Error occurred: {:?}", error);
-                    }
-             else {
+            if let Some(_parse_url) = parts.next() {
+                let client_id = env::var("CLIENT_ID").expect("CLIENT_ID not found in environment variables");
+                let client_secret = env::var("CLIENT_SECRET").expect("CLIENT_SECRET not found in environment variables");
+                let access_token = get_token(&client_id, &client_secret).await;
+
+                if let Ok(token_response) = access_token {
+                    println!("Access Token: {}", token_response);
+                } else if let Err(err) = access_token {
+                    println!("Error getting access token: {:?}", err);
+                }
+            } else {
                 // Handle the case where the parse URL is missing
                 println!("Parse URL is missing");
             }
@@ -143,24 +166,21 @@ impl EventHandler for Handler {
 
     async fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
-        }
+    }
 }
 
 
 
 #[tokio::main]
-
 async fn main() {
-  let token = env::var("DISCORD_TOKEN")
-  .expect("Expected a token in the environment");
-  let mut client = Client::builder(&token)
-  .event_handler(Handler)
-  .await
-  .expect("Err creating client");
+    let token = env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found in environment variables");
+    let mut client = Client::builder(&token)
+        .event_handler(Handler)
+        .await
+        .expect("Error creating client");
 
-  if let Err(why) = client.start().await {
-      println!("Client error: {:?}", why);
-  }
+    if let Err(why) = client.start().await {
+        println!("Client error: {:?}", why);
+    }
 }
-
 
