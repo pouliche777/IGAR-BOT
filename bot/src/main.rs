@@ -68,21 +68,36 @@ async fn get_token(client_id: &str, client_secret: &str) -> Result<TokenResponse
 }
 async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, reqwest::Error> {
     let client = reqwest::Client::new();
+    //EXEMPLE FONCTIONNEL
+    // let query = r#"
+    //     query($code: String){
+    //         reportData{
+    //             report(code: $code){
+    //                 fights{
+    //                 id
+    //                 size
+    //                 startTime
+    //                 endTime
+    //                 }
+    //             }
+    //         }
+    //     }
+    // "#;
     let query = r#"
-        query($code:string) {
-            reportData {
-                reports(code:$code) {
+    query($code: String) {
+        reportData {
+            report(code: $code) {
+                fights {
                     id
-                    title
                     startTime
                     endTime
-                    guild {
-                        name
-                    }
+                    friendlyPlayers
                 }
             }
         }
-    "#;
+    }
+"#;
+
     let variables = serde_json::json!({
         "code": code
     });
@@ -98,9 +113,15 @@ async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, r
         .body(body.to_string())
         .send()
         .await?;
+        //MOntre la reponse HTTP de  ma requete
+     let status = response.status();
+     println!("Response Status Code: {}", status);
+     let headers = response.headers();
+     println!("Response Headers: {:?}", headers);
 
-        let data = response.json::<serde_json::Value>().await;
-    Ok(data)
+
+        let data = response.json::<serde_json::Value>().await?;
+        Ok(data)
 }
 
 
@@ -120,13 +141,13 @@ impl EventHandler for Handler {
                 println!("Error sending message: {:?}", why);
             }
         } else if msg.content.starts_with(TELL_COMMAND) {
-            // Split the message into two parts: the command and the user/message arguments
+            
             let mut parts = msg.content.splitn(2, ' ');
 
-            // Skip the command itself
+        
             parts.next();
 
-            // Extract the user argument
+          
             let user_arg = parts.next().unwrap_or("");
 
             let user = if let Some(user_id) = user_arg.strip_prefix("<@!") {
@@ -166,8 +187,9 @@ impl EventHandler for Handler {
                 if let Ok(token_response) = access_token {
                     println!("Access Token: {}", token_response);
                     if let Ok(data) = get_data(&token_response.access_token, report_code).await {
-                        let data_json = serde_json::to_string(&data);
-                        println!("data: {}", data);
+                        if let Ok(data_json) = serde_json::to_string(&data) {
+                            println!("Data: {}", data_json);
+                        }
                     } else {
                         println!("Error getting data");
                 }
@@ -178,7 +200,6 @@ impl EventHandler for Handler {
             }
            
             else {
-                // Handle the case where the parse URL is missing
                 println!("Parse URL is missing");
             }
         }
@@ -194,6 +215,7 @@ impl EventHandler for Handler {
 #[tokio::main]
 async fn main() {
     let token = env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN not found in environment variables");
+    println!("discordToken: {}", token);
     let mut client = Client::builder(&token)
         .event_handler(Handler)
         .await
