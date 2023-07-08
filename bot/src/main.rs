@@ -66,24 +66,36 @@ async fn get_token(client_id: &str, client_secret: &str) -> Result<TokenResponse
     let token_response = response.json::<TokenResponse>().await?;
     Ok(token_response)
 }
-async fn get_data(acces_token: &str) -> Result<serde_json::Value, reqwest::Error> {
+async fn get_data(acces_token: &str, code: &str) -> Result<serde_json::Value, reqwest::Error> {
     let client = reqwest::Client::new();
     let query = r#"
-            query {
-                users {
-                    name
-                    role
-                    realm {
+        query($code:string) {
+            reportData {
+                reports(code:$code) {
+                    id
+                    title
+                    startTime
+                    endTime
+                    guild {
                         name
-                        region
                     }
                 }
             }
-        "#;
+        }
+    "#;
+    let variables = serde_json::json!({
+        "code": code
+    });
+
+    let body = serde_json::json!({
+        "query": query,
+        "variables": variables
+    });
     let response = client
         .post(WCL_API_URL)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", access_token))
+        .body(body.to_string())
         .send()
         .await?;
 
@@ -147,13 +159,16 @@ impl EventHandler for Handler {
         } else if msg.content.starts_with(PARSE_COMMAND) {
             let mut parts = msg.content.splitn(2, ' ');
             parts.next();
-            if let Some(_parse_url) = parts.next() {
+            if let Some(report_code) = parts.next() {
                 let client_id = env::var("CLIENT_ID").expect("CLIENT_ID not found in environment variables");
                 let client_secret = env::var("CLIENT_SECRET").expect("CLIENT_SECRET not found in environment variables");
                 let access_token = get_token(&client_id, &client_secret).await;
 
                 if let Ok(token_response) = access_token {
                     println!("Access Token: {}", token_response);
+                    let data = get_data(acces_token, report_code);
+                    println!("data: {}", data);
+
                 } else if let Err(err) = access_token {
                     println!("Error getting access token: {:?}", err);
                 }
