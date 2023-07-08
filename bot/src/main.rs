@@ -66,7 +66,7 @@ async fn get_token(client_id: &str, client_secret: &str) -> Result<TokenResponse
     let token_response = response.json::<TokenResponse>().await?;
     Ok(token_response)
 }
-async fn get_data(acces_token: &str, code: &str) -> Result<serde_json::Value, reqwest::Error> {
+async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, reqwest::Error> {
     let client = reqwest::Client::new();
     let query = r#"
         query($code:string) {
@@ -99,7 +99,7 @@ async fn get_data(acces_token: &str, code: &str) -> Result<serde_json::Value, re
         .send()
         .await?;
 
-        let data = response.json::<serde_json::Value>().await?;
+        let data = response.json::<serde_json::Value>().await;
     Ok(data)
 }
 
@@ -163,16 +163,21 @@ impl EventHandler for Handler {
                 let client_id = env::var("CLIENT_ID").expect("CLIENT_ID not found in environment variables");
                 let client_secret = env::var("CLIENT_SECRET").expect("CLIENT_SECRET not found in environment variables");
                 let access_token = get_token(&client_id, &client_secret).await;
-
                 if let Ok(token_response) = access_token {
                     println!("Access Token: {}", token_response);
-                    let data = get_data(acces_token, report_code);
-                    println!("data: {}", data);
-
-                } else if let Err(err) = access_token {
-                    println!("Error getting access token: {:?}", err);
+                    if let Ok(data) = get_data(&token_response.access_token, report_code).await {
+                        let data_json = serde_json::to_string(&data);
+                        println!("data: {}", data);
+                    } else {
+                        println!("Error getting data");
                 }
-            } else {
+            } 
+            else if let Err(err) = access_token {
+                println!("Error getting access token: {:?}", err);
+                }
+            }
+           
+            else {
                 // Handle the case where the parse URL is missing
                 println!("Parse URL is missing");
             }
