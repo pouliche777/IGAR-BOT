@@ -1,4 +1,30 @@
 WCL utilise GraphQL
 SINGLE ENTRY POINT
+https://www.youtube.com/watch?v=ogpE4hviXyA
 Je dois comprendre le schema pour extraire les donnees
 Tres sensible a la syntaxe.
+EXEMPLE FONCTIONNEL
+    let query = r#"
+        query($code: String){
+            reportData{
+                report(code: $code){
+                    fights{
+                    id
+                    size
+                    startTime
+                    endTime
+                    }
+                }
+            }
+        }
+    "#;
+    enfin trouver comment recuper le dps et le rank
+    query Query {
+        reportData {
+          report(code:"18htrbQCYqvKWgFc") {
+            rankings
+          }
+          
+        }
+      }
+    

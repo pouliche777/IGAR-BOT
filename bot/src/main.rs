@@ -68,35 +68,17 @@ async fn get_token(client_id: &str, client_secret: &str) -> Result<TokenResponse
 }
 async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, reqwest::Error> {
     let client = reqwest::Client::new();
-    //EXEMPLE FONCTIONNEL
-    // let query = r#"
-    //     query($code: String){
-    //         reportData{
-    //             report(code: $code){
-    //                 fights{
-    //                 id
-    //                 size
-    //                 startTime
-    //                 endTime
-    //                 }
-    //             }
-    //         }
-    //     }
-    // "#;
-    let query = r#"
-    query($code: String) {
-        reportData {
-            report(code: $code) {
-                fights {
-                    id
-                    startTime
-                    endTime
-                    friendlyPlayers
-                }
+    //
+        let query = r#"
+        query Query($code: String) {
+            reportData {
+              report(code: $code ) {
+                rankings
+              }
+              
             }
-        }
-    }
-"#;
+          }
+        "#;
 
     let variables = serde_json::json!({
         "code": code
@@ -113,7 +95,7 @@ async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, r
         .body(body.to_string())
         .send()
         .await?;
-        //MOntre la reponse HTTP de  ma requete
+        //MOntre la reponse HTTP de  ma requete, enfin ca marche
      let status = response.status();
      println!("Response Status Code: {}", status);
      let headers = response.headers();
@@ -122,6 +104,81 @@ async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, r
 
         let data = response.json::<serde_json::Value>().await?;
         Ok(data)
+}
+
+async fn parse_data(data: serde_json::Value) -> Result<(), Box<dyn std::error::Error>> {
+    // #[derive(Debug, Deserialize)]
+    // struct Character {
+    //     id: u64,
+    //     name: String,
+    //     spec: String,
+    //     // Add other character properties here
+    // }
+    
+    // #[derive(Debug, Deserialize)]
+    // struct Role {
+    //     name: String,
+    //     characters: Vec<Character>,
+    // }
+    
+    // #[derive(Debug, Deserialize)]
+    // struct RankingData {
+    //     fightID: u64,
+    //     partition: u64,
+    //     zone: u64,
+    //     roles: Vec<Role>,
+    //     // Add other ranking data properties here
+    // }
+    
+    // #[derive(Debug, Deserialize)]
+    // struct Rankings {
+    //     data: Vec<RankingData>,
+    // }
+    
+    // #[derive(Debug, Deserialize)]
+    // struct Report {
+    //     rankings: Rankings,
+    // }
+    
+    // #[derive(Debug, Deserialize)]
+    // struct ReportData {
+    //     report: Report,
+    // }
+    
+    // #[derive(Debug, Deserialize)]
+    // struct Data {
+    //     reportData: ReportData,
+    // }
+    
+    // let data: Data = serde_json::from_value(data)?;
+    // let rankings = data.reportData.report.rankings;
+    
+    // for ranking_data in rankings.data {
+    //     // Access specific properties of each ranking data
+    //     let _fight_id = ranking_data.fightID;
+    //     let _partition = ranking_data.partition;
+    //     let _zone = ranking_data.zone;
+    //     // ...
+    
+    //     // Iterate over roles (tanks, healers, dps)
+    //     for role in ranking_data.roles {
+    //         let _role_name = role.name;
+    //         for character in role.characters {
+    //             let id = character.id;
+    //             let name = character.name;
+    //             let spec = character.spec;
+    
+    //             println!("ID: {}", id);
+    //             println!("Nom: {}", name);
+    //             println!("Spécialisation: {}", spec);
+    //             println!("-------------------");
+    //         }
+    //     }
+    // }
+     let data_json = serde_json::to_string(&data);
+     println!("Data: {:?}", data_json);
+    Ok(())
+
 }
 
 
@@ -187,9 +244,7 @@ impl EventHandler for Handler {
                 if let Ok(token_response) = access_token {
                     println!("Access Token: {}", token_response);
                     if let Ok(data) = get_data(&token_response.access_token, report_code).await {
-                        if let Ok(data_json) = serde_json::to_string(&data) {
-                            println!("Data: {}", data_json);
-                        }
+                        parse_data(data).await;
                     } else {
                         println!("Error getting data");
                 }
