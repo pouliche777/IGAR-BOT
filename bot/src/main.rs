@@ -1,6 +1,7 @@
 
 use std::env;
 use reqwest;
+use regex::Regex;
 use serde::{Deserialize};
 use serenity::{
     async_trait,
@@ -66,7 +67,7 @@ async fn get_token(client_id: &str, client_secret: &str) -> Result<TokenResponse
     let token_response = response.json::<TokenResponse>().await?;
     Ok(token_response)
 }
-async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, reqwest::Error> {
+async fn get_data(access_token: &str, code: &str) -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     //
         let query = r#"
@@ -102,83 +103,140 @@ async fn get_data(access_token: &str, code: &str) -> Result<serde_json::Value, r
      println!("Response Headers: {:?}", headers);
 
 
-        let data = response.json::<serde_json::Value>().await?;
-        Ok(data)
+        if response.status().is_success() {
+    let data = response.json::<serde_json::Value>().await?;
+    println!("testo");
+    parse_data(data).await?;
+    Ok(())
+} else {
+    println!("Request failed with status code: {}", response.status());
+    // Handle the error case appropriately
+    // You can return an error or take other actions
+    // For now, let's return an empty result
+    Ok(())
+}
 }
 
 async fn parse_data(data: serde_json::Value) -> Result<(), Box<dyn std::error::Error>> {
-    // #[derive(Debug, Deserialize)]
-    // struct Character {
-    //     id: u64,
-    //     name: String,
-    //     spec: String,
-    //     // Add other character properties here
-    // }
-    
-    // #[derive(Debug, Deserialize)]
-    // struct Role {
-    //     name: String,
-    //     characters: Vec<Character>,
-    // }
-    
-    // #[derive(Debug, Deserialize)]
-    // struct RankingData {
-    //     fightID: u64,
-    //     partition: u64,
-    //     zone: u64,
-    //     roles: Vec<Role>,
-    //     // Add other ranking data properties here
-    // }
-    
-    // #[derive(Debug, Deserialize)]
-    // struct Rankings {
-    //     data: Vec<RankingData>,
-    // }
-    
-    // #[derive(Debug, Deserialize)]
-    // struct Report {
-    //     rankings: Rankings,
-    // }
-    
-    // #[derive(Debug, Deserialize)]
-    // struct ReportData {
-    //     report: Report,
-    // }
-    
-    // #[derive(Debug, Deserialize)]
-    // struct Data {
-    //     reportData: ReportData,
-    // }
-    
-    // let data: Data = serde_json::from_value(data)?;
-    // let rankings = data.reportData.report.rankings;
-    
-    // for ranking_data in rankings.data {
-    //     // Access specific properties of each ranking data
-    //     let _fight_id = ranking_data.fightID;
-    //     let _partition = ranking_data.partition;
-    //     let _zone = ranking_data.zone;
-    //     // ...
-    
-    //     // Iterate over roles (tanks, healers, dps)
-    //     for role in ranking_data.roles {
-    //         let _role_name = role.name;
-    //         for character in role.characters {
-    //             let id = character.id;
-    //             let name = character.name;
-    //             let spec = character.spec;
-    
-    //             println!("ID: {}", id);
-    //             println!("Nom: {}", name);
-    //             println!("Spécialisation: {}", spec);
-    //             println!("-------------------");
-    //         }
-    //     }
-    // }
-     let data_json = serde_json::to_string(&data);
-     println!("Data: {:?}", data_json);
-    Ok(())
+    #[derive(Debug, Deserialize)]
+struct Report {
+    data: ReportData,
+}
 
+#[derive(Debug, Deserialize)]
+struct ReportData {
+    reportData: ReportInfo,
+}
+
+#[derive(Debug, Deserialize)]
+struct ReportInfo {
+    report: Rankings,
+}
+
+#[derive(Debug, Deserialize)]
+struct Rankings {
+    data: Vec<Ranking>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Ranking {
+    affixes: Vec<u32>,
+    bracket: u32,
+    bracketData: u32,
+    computedScore: f64,
+    damageTakenExcludingTanks: u32,
+    deaths: u32,
+    difficulty: u32,
+    duration: u32,
+    encounter: Encounter,
+    fightID: u32,
+    kill: u32,
+    medal: String,
+    partition: u32,
+    roles: Roles,
+    score: Score,
+    size: u32,
+    speed: Speed,
+    team: Vec<TeamMember>,
+    zone: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct Encounter {
+    id: u32,
+    name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Roles {
+    dps: RoleInfo,
+    healers: RoleInfo,
+    tanks: RoleInfo,
+}
+
+#[derive(Debug, Deserialize)]
+struct RoleInfo {
+    characters: Vec<Character>,
+    name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Character {
+    amount: f64,
+    best: String,
+    bracket: u32,
+    bracketData: u32,
+    bracketPercent: u32,
+    class: String,
+    id: u32,
+    name: String,
+    rank: String,
+    rankPercent: u32,
+    server: Server,
+    spec: String,
+    totalParses: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct Server {
+    id: u32,
+    name: String,
+    region: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Score {
+    best: String,
+    rank: String,
+    rankPercent: u32,
+    totalParses: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct Speed {
+    best: String,
+    rank: String,
+    rankPercent: u32,
+    totalParses: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct TeamMember {
+    class: String,
+    id: u32,
+    name: String,
+    role: String,
+    spec: String,
+}
+
+    println!("{:?}", data);
+    let report_data: Result<ReportData, serde_json::Error> = serde_json::from_value(data);
+    match report_data {
+        Ok(report_data) => println!("{:?}", report_data),
+        Err(error) => println!("Deserialization error: {}", error),
+    }
+
+    Ok(())
 }
 
 
@@ -244,7 +302,7 @@ impl EventHandler for Handler {
                 if let Ok(token_response) = access_token {
                     println!("Access Token: {}", token_response);
                     if let Ok(data) = get_data(&token_response.access_token, report_code).await {
-                        parse_data(data).await;
+                        
                     } else {
                         println!("Error getting data");
                 }
