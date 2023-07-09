@@ -27,4 +27,114 @@ EXEMPLE FONCTIONNEL
           
         }
       }
-    
+      #[derive(Debug, Deserialize)]
+struct RankingData {
+    fightID: u64,
+    partition: u64,
+    zone: u64,
+    encounter: Encounter,
+    difficulty: u64,
+    size: u64,
+    kill: u64,
+    duration: u64,
+    bracketData: f64,
+    deaths: u64,
+    damageTakenExcludingTanks: u64,
+    roles: Roles,
+}
+
+#[derive(Debug, Deserialize)]
+struct Encounter {
+    id: u64,
+    name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Roles {
+    tanks: Role,
+    healers: Role,
+    dps: Role,
+}
+
+#[derive(Debug, Deserialize)]
+struct Role {
+    name: String,
+    characters: Vec<Character>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Character {
+    id: u64,
+    name: String,
+    server: Server,
+    class: String,
+    spec: String,
+    amount: f64,
+    bracketData: f64,
+    bracket: u64,
+    rank: String,
+    best: String,
+    totalParses: u64,
+    bracketPercent: u64,
+    rankPercent: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct Server {
+    id: u64,
+    name: String,
+    region: String,
+}
+use serde_json;
+
+// Assuming `json_response` contains the JSON response string
+
+// Deserialize the JSON into the data structure
+let data: Data = serde_json::from_str(&json_response)?;
+
+// Access the rankings data for each individual fight
+for ranking_data in data.reportData.report.rankings.data {
+    let fight_id = ranking_data.fightID;
+    let partition = ranking_data.partition;
+    let zone = ranking_data.zone;
+    let encounter_id = ranking_data.encounter.id;
+    let encounter_name = ranking_data.encounter.name;
+    let difficulty = ranking_data.difficulty;
+    let size = ranking_data.size;
+    let kill = ranking_data.kill;
+    let duration = ranking_data.duration;
+    let bracket_data = ranking_data.bracketData;
+    let deaths = ranking_data.deaths;
+    let damage_taken = ranking_data.damageTakenExcludingTanks;
+
+    // Access tanks data
+    for tank in ranking_data.roles.tanks.characters {
+        let tank_id = tank.id;
+        let tank_name = tank.name;
+        let tank_server_id = tank.server.id;
+        let tank_server_name = tank.server.name;
+        let tank_server_region = tank.server.region;
+        let tank_class = tank.class;
+        let tank_spec = tank.spec;
+        let tank_amount = tank.amount;
+        let tank_bracket_data = tank.bracketData;
+        let tank_bracket = tank.bracket;
+        let tank_rank = tank.rank;
+        let tank_best = tank.best;
+        let tank_total_parses = tank.totalParses;
+        let tank_bracket_percent = tank.bracketPercent;
+        let tank_rank_percent = tank.rankPercent;
+
+        // Process tank data as needed
+    }
+
+    // Access healers data
+    for healer in ranking_data.roles.healers.characters {
+        // Process healer data as needed
+    }
+
+    // Access DPS data
+    for dps in ranking_data.roles.dps.characters {
+        // Process DPS data as needed
+    }
+}
