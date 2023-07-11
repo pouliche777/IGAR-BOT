@@ -25,7 +25,7 @@ Voici la liste de mes fonctionnalités:
 
 !insult
 !love 
-!parse 
+!parse     cette commande prend un argument, le code d'un report de  WarcraftLogs ( par exemple : !parse 4T82MmhCjbYdD6wR)
 !help
 
 
