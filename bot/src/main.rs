@@ -134,11 +134,9 @@ fn build_message(root: Root) -> String {
     let mut message = String::from("Voici les parses du rapport :");
     println!("{:#?}", root);
 
-    let report_data = root.data.report_data;
-    let report = report_data.report;
-    let ranking = report.rankings;
-    let fights = ranking.data; 
+    let fights = root.data.report_data.report.rankings.data; 
                 for fight in fights {
+                    
                     let encounter = format!("**{}**", fight.encounter.name);
                     message.push('\n');
                     message.push_str(&encounter);
